@@ -1,0 +1,5 @@
+build/
+*.class
+dist/
+nbproject/private/
+.DS_Store
