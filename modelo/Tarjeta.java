@@ -86,9 +86,5 @@ public class Tarjeta {
         this.idUsuario = idUsuario;
     }
 
-    public String toString() {
-        return "id: " + id + " numero: " + numero + " tipo: " + tipo
-                + " exp: " + fechaExp + " saldo: $" + saldo
-                + " activo: " + activo + " idUsuario: " + idUsuario;
-    }
+    
 }
