@@ -14,16 +14,16 @@ public class Menu {
     static TarjetaDAO tarjetaDAO = new TarjetaDAO(usuarioDAO);
 
     public static void iniciar() {
-        int op;
+        int opc;
         do {
             System.out.println("\n===== menu principal =====");
             System.out.println("1. usuarios");
             System.out.println("2. tarjetas");
             System.out.println("3. login");
             System.out.println("0. salir");
-            op = leerEntero();
+            opc = leerEntero();
 
-            switch (op) {
+            switch (opc) {
                 case 1:
                     menuUsuarios();
                     break;
@@ -39,7 +39,7 @@ public class Menu {
                 default:
                     System.out.println("esa opcion no existe");
             }
-        } while (op != 0);
+        } while (opc != 0);
     }
 
     static void menuUsuarios() {

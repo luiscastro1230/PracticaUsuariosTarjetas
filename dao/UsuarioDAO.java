@@ -64,6 +64,12 @@ public class UsuarioDAO {
                 System.out.println("no existe ese usuario");
                 return false;
             }
+
+            if (!u.isActivo()) {
+                System.out.println("no se puede editar un usuario eliminado");
+                return false;
+            }
+
             if (Validaciones.esVacio(nombre) || Validaciones.esVacio(apellido) || Validaciones.esVacio(email)) {
                 System.out.println("hay datos vacios");
                 return false;
@@ -72,6 +78,13 @@ public class UsuarioDAO {
                 System.out.println("el correo no es valido");
                 return false;
             }
+
+            Usuario existente = buscarPorEmail(email);
+            if (existente != null && existente.getId() != id) {
+                System.out.println("ese correo ya esta registrado por otro usuario");
+                return false;
+            }
+
             if (!Validaciones.validarEdad(edad)) {
                 System.out.println("la edad no es valida");
                 return false;
