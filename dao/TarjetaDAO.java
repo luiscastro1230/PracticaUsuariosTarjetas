@@ -2,6 +2,7 @@ package dao;
 
 import java.util.ArrayList;
 import modelo.Tarjeta;
+import modelo.Usuario;
 import util.GeneradorID;
 import util.Validaciones;
 
@@ -17,10 +18,19 @@ public class TarjetaDAO {
 
     public boolean agregar(Tarjeta t) {
         try {
-            if (usuarioDAO.buscarPorId(t.getIdUsuario()) == null) {
+
+            Usuario dueño = usuarioDAO.buscarPorId(t.getIdUsuario());
+
+            if (dueño == null) {
                 System.out.println("no existe ese usuario");
                 return false;
             }
+
+            if (!dueño.isActivo()) {
+                System.out.println("no se puede crear una tarjeta para un usuario eliminado");
+                return false;
+            }
+
             if (!Validaciones.validarTipo(t.getTipo())) {
                 System.out.println("el tipo de tarjeta no es valido");
                 return false;
@@ -73,6 +83,12 @@ public class TarjetaDAO {
                 System.out.println("no existe esa tarjeta");
                 return false;
             }
+
+            if (!t.isActivo()) {
+                System.out.println("no se puede editar una tarjeta desactivada");
+                return false;
+            }
+
             if (!Validaciones.validarTipo(tipo)) {
                 System.out.println("el tipo de tarjeta no es valido");
                 return false;
