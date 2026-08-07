@@ -1,15 +1,18 @@
 package dao;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import modelo.Tarjeta;
-import modelo.Usuario;
+import util.Conexion;
 import util.GeneradorID;
 import util.Validaciones;
 
 public class TarjetaDAO {
 
-    ArrayList<Tarjeta> tarjetas = new ArrayList<>();
-    int contador = 1;
     UsuarioDAO usuarioDAO;
 
     public TarjetaDAO(UsuarioDAO usuarioDAO) {
@@ -17,39 +20,43 @@ public class TarjetaDAO {
     }
 
     public boolean agregar(Tarjeta t) {
-        try {
+        if (usuarioDAO.buscarPorId(t.getIdUsuario()) == null) {
+            System.out.println("no existe ese usuario");
+            return false;
+        }
+        if (!Validaciones.validarTipo(t.getTipo())) {
+            System.out.println("el tipo de tarjeta no es valido");
+            return false;
+        }
+        if (t.getSaldo() < 0) {
+            System.out.println("el saldo no puede ser negativo");
+            return false;
+        }
 
-            Usuario dueño = usuarioDAO.buscarPorId(t.getIdUsuario());
+        String numero = GeneradorID.generarNumeroTarjeta();
+        while (buscarPorNumero(numero) != null) {
+            numero = GeneradorID.generarNumeroTarjeta();
+        }
 
-            if (dueño == null) {
-                System.out.println("no existe ese usuario");
-                return false;
+        String sql = "INSERT INTO Tarjeta (clave, numero, fechaExp, saldo, tipo, activo, idUsuario) VALUES (?, ?, ?, ?, ?, 1, ?)";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setString(1, t.getClave());
+            ps.setString(2, numero);
+            ps.setString(3, t.getFechaExp());
+            ps.setDouble(4, t.getSaldo());
+            ps.setString(5, t.getTipo());
+            ps.setInt(6, t.getIdUsuario());
+            ps.executeUpdate();
+
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                t.setId(rs.getInt(1));
             }
-
-            if (!dueño.isActivo()) {
-                System.out.println("no se puede crear una tarjeta para un usuario eliminado");
-                return false;
-            }
-
-            if (!Validaciones.validarTipo(t.getTipo())) {
-                System.out.println("el tipo de tarjeta no es valido");
-                return false;
-            }
-            if (t.getSaldo() < 0) {
-                System.out.println("el saldo no puede ser negativo");
-                return false;
-            }
-
-            String numero = GeneradorID.generarNumeroTarjeta();
-            while (buscarPorNumero(numero) != null) {
-                numero = GeneradorID.generarNumeroTarjeta();
-            }
-
             t.setNumero(numero);
-            t.setId(contador);
-            contador = contador + 1;
             t.setActivo(true);
-            tarjetas.add(t);
             System.out.println("tarjeta creada correctamente, numero: " + numero);
             return true;
         } catch (Exception e) {
@@ -59,48 +66,67 @@ public class TarjetaDAO {
     }
 
     public Tarjeta buscarPorId(int id) {
-        for (Tarjeta t : tarjetas) {
-            if (t.getId() == id) {
-                return t;
+        String sql = "SELECT * FROM Tarjeta WHERE id = ?";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return armarTarjeta(rs);
             }
+            return null;
+        } catch (Exception e) {
+            System.out.println("error: " + e.getMessage());
+            return null;
         }
-        return null;
     }
 
     public Tarjeta buscarPorNumero(String numero) {
-        for (Tarjeta t : tarjetas) {
-            if (t.getNumero().equals(numero)) {
-                return t;
+        String sql = "SELECT * FROM Tarjeta WHERE numero = ?";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, numero);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return armarTarjeta(rs);
             }
+            return null;
+        } catch (Exception e) {
+            System.out.println("error: " + e.getMessage());
+            return null;
         }
-        return null;
     }
 
     public boolean editar(int id, String clave, String fechaExp, double saldo, String tipo) {
-        try {
-            Tarjeta t = buscarPorId(id);
-            if (t == null) {
-                System.out.println("no existe esa tarjeta");
-                return false;
-            }
+        Tarjeta t = buscarPorId(id);
+        if (t == null) {
+            System.out.println("no existe esa tarjeta");
+            return false;
+        }
+        if (!Validaciones.validarTipo(tipo)) {
+            System.out.println("el tipo de tarjeta no es valido");
+            return false;
+        }
+        if (saldo < 0) {
+            System.out.println("el saldo no puede ser negativo");
+            return false;
+        }
 
-            if (!t.isActivo()) {
-                System.out.println("no se puede editar una tarjeta desactivada");
-                return false;
-            }
+        String sql = "UPDATE Tarjeta SET clave = ?, fechaExp = ?, saldo = ?, tipo = ? WHERE id = ?";
 
-            if (!Validaciones.validarTipo(tipo)) {
-                System.out.println("el tipo de tarjeta no es valido");
-                return false;
-            }
-            if (saldo < 0) {
-                System.out.println("el saldo no puede ser negativo");
-                return false;
-            }
-            t.setClave(clave);
-            t.setFechaExp(fechaExp);
-            t.setSaldo(saldo);
-            t.setTipo(tipo);
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, clave);
+            ps.setString(2, fechaExp);
+            ps.setDouble(3, saldo);
+            ps.setString(4, tipo);
+            ps.setInt(5, id);
+            ps.executeUpdate();
             System.out.println("tarjeta actualizada correctamente");
             return true;
         } catch (Exception e) {
@@ -110,34 +136,75 @@ public class TarjetaDAO {
     }
 
     public boolean desactivar(int id) {
-        Tarjeta t = buscarPorId(id);
-        if (t == null) {
-            System.out.println("no existe esa tarjeta");
+        String sql = "UPDATE Tarjeta SET activo = 0 WHERE id = ?";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            int filas = ps.executeUpdate();
+            if (filas == 0) {
+                System.out.println("no existe esa tarjeta");
+                return false;
+            }
+            System.out.println("tarjeta desactivada");
+            return true;
+        } catch (Exception e) {
+            System.out.println("error: " + e.getMessage());
             return false;
         }
-        t.setActivo(false);
-        System.out.println("tarjeta desactivada");
-        return true;
     }
 
     public boolean mostrarTodas() {
-        if (tarjetas.isEmpty()) {
-            System.out.println("no hay tarjetas todavia");
+        String sql = "SELECT * FROM Tarjeta";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            boolean hayDatos = false;
+            while (rs.next()) {
+                System.out.println(armarTarjeta(rs));
+                hayDatos = true;
+            }
+            if (!hayDatos) {
+                System.out.println("no hay tarjetas todavia");
+            }
+            return hayDatos;
+        } catch (Exception e) {
+            System.out.println("error: " + e.getMessage());
             return false;
         }
-        for (Tarjeta t : tarjetas) {
-            System.out.println(t);
-        }
-        return true;
     }
 
     public ArrayList<Tarjeta> listarPorUsuario(int idUsuario) {
         ArrayList<Tarjeta> resultado = new ArrayList<>();
-        for (Tarjeta t : tarjetas) {
-            if (t.getIdUsuario() == idUsuario) {
-                resultado.add(t);
+        String sql = "SELECT * FROM Tarjeta WHERE idUsuario = ?";
+
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, idUsuario);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                resultado.add(armarTarjeta(rs));
             }
+        } catch (Exception e) {
+            System.out.println("error: " + e.getMessage());
         }
         return resultado;
+    }
+
+    private Tarjeta armarTarjeta(ResultSet rs) throws SQLException {
+        Tarjeta t = new Tarjeta();
+        t.setId(rs.getInt("id"));
+        t.setClave(rs.getString("clave"));
+        t.setNumero(rs.getString("numero"));
+        t.setFechaExp(rs.getString("fechaExp"));
+        t.setSaldo(rs.getDouble("saldo"));
+        t.setTipo(rs.getString("tipo"));
+        t.setActivo(rs.getBoolean("activo"));
+        t.setIdUsuario(rs.getInt("idUsuario"));
+        return t;
     }
 }
